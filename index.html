@@ -57,7 +57,7 @@ button:hover{background:rgba(59,130,246,.3)}
 .footer{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .mono{font-family:ui-monospace,Menlo,monospace;font-size:12px}
 
-/* --- BOUNCER IMAGE STYLE --- */
+/* --- LOGO (FLOAT → DOCK) --- */
 #bouncer{
   position:fixed;
   width:120px;
@@ -74,45 +74,45 @@ button:hover{background:rgba(59,130,246,.3)}
 <body>
 
 <div class="wrap">
-<div class="card">
+  <div class="card">
 
-<h1>The Court Report</h1>
-<h2>Countdown to Arrival</h2>
+    <h1>The Court Report</h1>
+    <h2>Countdown to Arrival</h2>
 
-<span id="badge" class="badge ok">Scheduled</span>
+    <span id="badge" class="badge ok">Scheduled</span>
 
-<div class="grid" style="margin-top:12px">
-  <div><label>Flight</label><input id="flight" value="UA1768"></div>
-  <div><label>Route</label><input id="route" value="SFO → BUR"></div>
-  <div><label>Departure IATA</label><input id="dep_iata" value="SFO"></div>
-  <div><label>Arrival IATA</label><input id="arr_iata" value="BUR"></div>
-  <div><label>Scheduled Arrival</label><input id="arr_time" type="time" value="12:08"></div>
-  <div><label>Date</label><input id="date" type="date" value="2026-01-09"></div>
-  <div style="grid-column:1/-1">
-    <label>Cloudflare Worker URL</label>
-    <input id="proxy" value="https://court-report-flight-proxy.abram-g.workers.dev">
+    <div class="grid" style="margin-top:12px">
+      <div><label>Flight</label><input id="flight" value="UA1768"></div>
+      <div><label>Route</label><input id="route" value="SFO → BUR"></div>
+      <div><label>Departure IATA</label><input id="dep_iata" value="SFO"></div>
+      <div><label>Arrival IATA</label><input id="arr_iata" value="BUR"></div>
+      <div><label>Scheduled Arrival</label><input id="arr_time" type="time" value="12:08"></div>
+      <div><label>Date</label><input id="date" type="date" value="2026-01-09"></div>
+      <div style="grid-column:1/-1">
+        <label>Cloudflare Worker URL</label>
+        <input id="proxy" value="https://court-report-flight-proxy.abram-g.workers.dev">
+      </div>
+    </div>
+
+    <div class="footer">
+      <button onclick="save()">Save / Apply</button>
+    </div>
+
+    <div class="big" id="countdown">—</div>
+    <p class="status" id="status">—</p>
+
+    <div class="kv"><span>Arrival source</span><b id="source">Scheduled</b></div>
+    <div class="kv"><span>Arrival time</span><b id="arr_display">—</b></div>
+    <div class="kv"><span>Last live update</span><b id="last_live">—</b></div>
+
+    <p class="mono" style="margin-top:10px">
+      Live data via AirLabs • Updates every 60 seconds
+    </p>
+
   </div>
 </div>
 
-<div class="footer">
-  <button onclick="save()">Save / Apply</button>
-</div>
-
-<div class="big" id="countdown">—</div>
-<p class="status" id="status">—</p>
-
-<div class="kv"><span>Arrival source</span><b id="source">Scheduled</b></div>
-<div class="kv"><span>Arrival time</span><b id="arr_display">—</b></div>
-<div class="kv"><span>Last live update</span><b id="last_live">—</b></div>
-
-<p class="mono" style="margin-top:10px">
-Live data via AirLabs • Updates every 60 seconds
-</p>
-
-</div>
-</div>
-
-<!-- BOUNCER IMAGE (logo.png must exist in repo root) -->
+<!-- logo.png must exist in repo root -->
 <img id="bouncer" src="logo.png" alt="logo">
 
 <script>
@@ -195,34 +195,43 @@ function tick(){
   $("last_live").textContent = lastLive;
 }
 
-/* ===================== BOUNCER LOGIC (FLOAT → DOCK + TINY BOUNCE) ===================== */
+/* ===================== LOGO FLOAT → DOCK (WITH DEBUG) ===================== */
 function initBouncer(){
   const img = $("bouncer");
   if(!img) return;
 
-  // Ensure visible
+  // Ensure visible and on-screen immediately
   img.hidden = false;
   img.style.display = "block";
+  img.style.transform = "translate(20px, 20px)";
 
-  const DURATION_MS = 12000;   // float time across screen
-  const MARGIN_X = 16;         // right margin
-  const MARGIN_Y = 14;         // top margin
-  const START_Y_PCT = 0.22;    // start height
-  const OVERSHOOT = 10;        // px overshoot for bounce
-  const SETTLE_MS = 420;       // settle speed
+  const DURATION_MS = 12000;
+  const MARGIN_X = 16;
+  const MARGIN_Y = 14;
+  const START_Y_PCT = 0.22;
+  const OVERSHOOT = 10;
+  const SETTLE_MS = 420;
   const EASE = t => 1 - Math.pow(1 - t, 3);
 
+  // On-page debug readout (remove later)
+  const dbg = document.createElement("div");
+  dbg.style.cssText = "position:fixed;left:12px;bottom:12px;z-index:10000;font:12px ui-monospace,Menlo,monospace;background:rgba(0,0,0,.55);color:#fff;padding:8px 10px;border-radius:10px;pointer-events:none";
+  dbg.textContent = "bouncer: init…";
+  document.body.appendChild(dbg);
+
   const startAnim = () => {
-    // Use real rendered size (or fallback)
-    const w = img.getBoundingClientRect().width || 120;
+    const rect = img.getBoundingClientRect();
+    const w = Math.max(40, rect.width || img.naturalWidth || 120);
 
     const startX = -w - 20; // off-screen left
-    const startY = window.innerHeight * START_Y_PCT;
+    const startY = Math.round(window.innerHeight * START_Y_PCT);
 
     const dockXY = () => ({
-      x: window.innerWidth - w - MARGIN_X,
+      x: Math.max(0, window.innerWidth - w - MARGIN_X),
       y: MARGIN_Y
     });
+
+    dbg.textContent = `bouncer: loaded w=${Math.round(w)} startY=${startY}`;
 
     const start = performance.now();
     let docked = false;
@@ -243,22 +252,21 @@ function initBouncer(){
         requestAnimationFrame(step);
       }else{
         docked = true;
+        dbg.textContent = `bouncer: docked @ ${Math.round(dx)},${Math.round(dy)}`;
 
-        // Overshoot slightly then settle into the corner
         img.animate([
           { transform:`translate(${dx-OVERSHOOT}px,${dy-OVERSHOOT}px)` },
           { transform:`translate(${dx}px,${dy}px)` }
         ],{
-          duration:SETTLE_MS,
-          easing:"cubic-bezier(.34,1.56,.64,1)",
-          fill:"forwards"
+          duration: SETTLE_MS,
+          easing: "cubic-bezier(.34,1.56,.64,1)",
+          fill: "forwards"
         });
       }
     }
 
     requestAnimationFrame(step);
 
-    // If window resizes after docking, keep it pinned top-right
     window.addEventListener("resize", () => {
       if(!docked) return;
       const {x, y} = dockXY();
@@ -266,13 +274,13 @@ function initBouncer(){
     });
   };
 
-  // Wait until image is loaded so size is correct
   if(img.complete && img.naturalWidth){
     startAnim();
   }else{
     img.addEventListener("load", startAnim, { once:true });
     img.addEventListener("error", () => {
-      console.warn("Bouncer image failed to load. Check that logo.png exists in repo root.");
+      dbg.textContent = "bouncer: ERROR loading logo.png";
+      console.warn("Bouncer image failed to load. Check logo.png path/case.");
     }, { once:true });
   }
 }
