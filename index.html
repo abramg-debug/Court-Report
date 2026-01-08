@@ -205,23 +205,22 @@ fetchLive();
 tick();
 setInterval(tick,1000);
 setInterval(fetchLive,60000);
-</script>
-  
-//image bouncer code:---------------------------------
-  
-  <style>
+
+<!-- image float + dock (with tiny bounce) -->
+<style>
   #bouncer{
     position:fixed;
-    left:20px; top:20px;
-    width:120px; height:auto;
+    width:120px;
+    height:auto;
     z-index:9999;
-    pointer-events:none; /* doesn't block clicks */
+    pointer-events:none;
     opacity:0.95;
     filter: drop-shadow(0 10px 18px rgba(0,0,0,.45));
+    will-change: transform;
   }
 </style>
 
-<img id="bouncer" src="logo.png" alt="bouncer" hidden />
+<img id="bouncer" src="logo.png" alt="logo" />
 
 <script>
 (() => {
@@ -232,7 +231,7 @@ setInterval(fetchLive,60000);
   const DURATION_MS = 12000;   // float time across screen
   const MARGIN_X = 16;         // right margin
   const MARGIN_Y = 14;         // top margin
-  const START_Y_PCT = 0.22;    // starting vertical position
+  const START_Y_PCT = 0.22;    // starting vertical position (0-1)
   const OVERSHOOT = 10;        // px overshoot for bounce
   const SETTLE_MS = 420;       // how fast it settles
   const EASE = (t) => 1 - Math.pow(1 - t, 3); // easeOutCubic
@@ -244,9 +243,8 @@ setInterval(fetchLive,60000);
 
   onReady(() => {
     const w = img.offsetWidth || 120;
-    const h = img.offsetHeight || 60;
 
-    const startX = -w - 20;
+    const startX = -w - 20; // off-screen left
     const startY = Math.round(window.innerHeight * START_Y_PCT);
 
     function dockXY(){
@@ -281,8 +279,6 @@ setInterval(fetchLive,60000);
 
     function bounceToDock(){
       const { x, y } = dockXY();
-
-      // Overshoot slightly past final position
       img.animate([
         { transform: `translate(${x - OVERSHOOT}px, ${y - OVERSHOOT}px)` },
         { transform: `translate(${x}px, ${y}px)` }
@@ -295,7 +291,6 @@ setInterval(fetchLive,60000);
 
     requestAnimationFrame(floatStep);
 
-    // Keep docked position correct on resize
     window.addEventListener("resize", () => {
       if (!docked) return;
       const { x, y } = dockXY();
@@ -304,8 +299,6 @@ setInterval(fetchLive,60000);
   });
 })();
 </script>
-
-  
 
   
 </body>
