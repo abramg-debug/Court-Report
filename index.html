@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Court Report — Countdown to Arrival</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#121a2b; --text:#e8eefc; --muted:#9fb0d8;
+      --accent:#3b82f6; --ok:#17c964; --warn:#f5a524; --err:#f31260;
+      --border: rgba(255,255,255,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+    .wrap{max-width:860px;margin:28px auto;padding:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:18px}
+    h1{margin:0 0 4px;font-size:22px}
+    h2{margin:0 0 12px;font-size:14px;color:var(--muted);font-weight:650}
+    .sub{color:var(--muted); margin:0 0 16px; line-height:1.35}
+    .grid{display:grid; gap:12px}
+    @media (min-width:760px){ .grid{grid-template-columns: 1fr 1fr} }
+    label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+    input, select, button{
+      width:100%; padding:10px 12px; border-radius:12px;
+      border:1px solid var(--border); background:rgba(255,255,255,.03);
+      color:var(--text); outline:none;
+    }
+    input:focus, select:focus{border-color: rgba(59,130,246,.75)}
+    button{cursor:pointer;background:rgba(59,130,246,.16);border-color: rgba(59,130,246,.35);font-weight:650}
+    button:hover{background:rgba(59,130,246,.22)}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:12px}
+    .big{font-size:44px;font-weight:900;letter-spacing:-.02em;line-height:1.05;margin:12px 0 8px}
+    .status{margin:0;color:var(--muted);line-height:1.45}
+    .kvs{display:grid;gap:8px;margin-top:14px}
+    .kv{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:13px}
+    .kv b{color:var(--text);font-weight:650}
+    .hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.35}
+    .badge{font-size:12px;font-weight:800;padding:4px 8px;border-radius:999px;border:1px solid var(--border)}
+    .ok{color:var(--ok); border-color: rgba(23,201,100,.35); background:rgba(23,201,100,.08)}
+    .warn{color:var(--warn); border-color: rgba(245,165,36,.35); background:rgba(245,165,36,.08)}
+    .err{color:var(--err); border-color: rgba(243,18,96,.35); background:rgba(243,18,96,.08)}
+    .footer{margin-top:14px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .tiny{font-size:11px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h1>The Court Report</h1>
+          <h2>Countdown to Arrival</h2>
+          <p class="sub">
+            Live status (via API) when available; otherwise falls back to scheduled times.
+            Default: <b>UA1768</b> (SFO → BUR), <b>Jan 9, 2026</b>, <b>12:08 PM</b> (America/Los_Angeles).
+          </p>
+        </div>
+        <span id="badge" class="badge ok">Scheduled</span>
+      </div>
+
+      <div class="grid" style="margin-top:10px">
+        <div>
+          <label for="flight">Flight</label>
+          <input id="flight" value="UA1768" />
+        </div>
+        <div>
+          <label for="route">Route</label>
+          <input id="route" value="SFO → BUR" />
+        </div>
+
+        <div>
+          <label for="dep_iata">Departure airport (IATA)</label>
+          <input id="dep_iata" value="SFO" />
+        </div>
+        <div>
+          <label for="arr_iata">Arrival airport (IATA)</label>
+          <input id="arr_iata" value="BUR" />
+        </div>
+
+        <div>
+          <label for="date">Date (local to airports)</label>
+          <input id="date" type="date" value="2026-01-09" />
+        </div>
+
+        <div>
+          <label for="tz">Time Zone</label>
+          <select id="tz">
+            <option value="America/Los_Angeles" selected>America/Los_Angeles (PT)</option>
+            <option value="UTC">UTC</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="dep">Scheduled Departure</label>
+          <input id="dep" type="time" value="10:46" />
+        </div>
+
+        <div>
+          <label for="arr">Scheduled Arrival</label>
+          <input id="arr" type="time" value="12:08" />
+        </div>
+
+        <div style="grid-column:1/-1">
+          <label for="proxyBase">Live API proxy base (Cloudflare Worker URL)</label>
+          <input id="proxyBase" placeholder="https://YOUR-WORKER.yourname.workers.dev" />
+          <div class="tiny" style="color:var(--muted);margin-top:6px">
+            Example: <span class="mono">https://court-report-flight-proxy.YOURSUBDOMAIN.workers.dev</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <button id="saveBtn" type="button">Save / Apply</button>
+        <button id="resetBtn" type="button">Reset to UA1768 defaults</button>
+        <span class="pill" title="Uses your device clock">
+          <span>Device time:</span> <span id="nowText">—</span>
+        </span>
+      </div>
+
+      <div class="big" id="countdown">—</div>
+      <p class="status" id="status">—</p>
+
+      <div class="kvs">
+        <div class="kv"><span>Arrival target used</span><b id="targetUsed">—</b></div>
+        <div class="kv"><span>Arrival timestamp</span><b id="arrStamp">—</b></div>
+        <div class="kv"><span>Time remaining</span><b id="remainStamp">—</b></div>
+        <div class="kv"><span>Live refresh</span><b id="liveRefresh">Every 60s</b></div>
+        <div class="kv"><span>Last live update</span><b id="lastLive">—</b></div>
+      </div>
+
+      <p class="hint">
+        If live status shows “No live data”, double-check your Worker URL and that your Aviationstack key is set in Cloudflare.
+        Live flight status is provided by Aviationstack’s <span class="mono">/v1/flights</span> endpoint. :contentReference[oaicite:2]{index=2}
+      </p>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const STORAGE_KEY = "court_report_countdown_v2";
+
+  const defaults = {
+    flight: "UA1768",
+    route: "SFO → BUR",
+    dep_iata: "SFO",
+    arr_iata: "BUR",
+    date: "2026-01-09",
+    tz: "America/Los_Angeles",
+    dep: "10:46",
+    arr: "12:08",
+    proxyBase: "" // set after you deploy the Worker
+  };
+
+  function pad2(n){ return String(n).padStart(2, "0"); }
+
+  function formatInTZ(date, timeZone){
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false
+    });
+    const parts = fmt.formatToParts(date);
+    const get = (t) => parts.find(p => p.type === t)?.value ?? "";
+    return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
+  }
+
+  // Convert a wall-clock time in a specific IANA timezone into a real Date (UTC instant).
+  function zonedTimeToDat
