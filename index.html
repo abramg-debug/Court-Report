@@ -228,42 +228,83 @@ setInterval(fetchLive,60000);
   const img = document.getElementById("bouncer");
   if(!img) return;
 
-  // Put a real image in your repo named "logo.png"
-  img.hidden = false;
+  // --- Tunables ---
+  const DURATION_MS = 12000;   // float time across screen
+  const MARGIN_X = 16;         // right margin
+  const MARGIN_Y = 14;         // top margin
+  const START_Y_PCT = 0.22;    // starting vertical position
+  const OVERSHOOT = 10;        // px overshoot for bounce
+  const SETTLE_MS = 420;       // how fast it settles
+  const EASE = (t) => 1 - Math.pow(1 - t, 3); // easeOutCubic
 
-  let x = 30, y = 30;
-  let vx = .35, vy = .25; // speed
-  let last = performance.now();
+  function onReady(fn){
+    if (img.complete && img.naturalWidth) fn();
+    else img.addEventListener("load", fn, { once:true });
+  }
 
-  function step(t){
-    const dt = Math.min(16, t - last); // clamp
-    last = t;
-
+  onReady(() => {
     const w = img.offsetWidth || 120;
     const h = img.offsetHeight || 60;
 
-    const maxX = window.innerWidth - w;
-    const maxY = window.innerHeight - h;
+    const startX = -w - 20;
+    const startY = Math.round(window.innerHeight * START_Y_PCT);
 
-    x += vx * dt;
-    y += vy * dt;
+    function dockXY(){
+      return {
+        x: window.innerWidth - w - MARGIN_X,
+        y: MARGIN_Y
+      };
+    }
 
-    if (x <= 0) { x = 0; vx *= -1; }
-    if (y <= 0) { y = 0; vy *= -1; }
-    if (x >= maxX) { x = maxX; vx *= -1; }
-    if (y >= maxY) { y = maxY; vy *= -1; }
+    const start = performance.now();
+    let docked = false;
 
-    img.style.transform = `translate(${x}px, ${y}px)`;
+    function floatStep(now){
+      if (docked) return;
 
-    requestAnimationFrame(step);
-  }
+      const t = Math.min(1, (now - start) / DURATION_MS);
+      const e = EASE(t);
 
-  requestAnimationFrame(step);
+      const { x: endX, y: endY } = dockXY();
+      const x = startX + (endX - startX) * e;
+      const y = startY + (endY - startY) * e;
 
-  // Optional: stop after 6 seconds
-  setTimeout(() => { img.remove(); }, 6000);
+      img.style.transform = `translate(${x}px, ${y}px)`;
+
+      if (t < 1){
+        requestAnimationFrame(floatStep);
+      } else {
+        docked = true;
+        bounceToDock();
+      }
+    }
+
+    function bounceToDock(){
+      const { x, y } = dockXY();
+
+      // Overshoot slightly past final position
+      img.animate([
+        { transform: `translate(${x - OVERSHOOT}px, ${y - OVERSHOOT}px)` },
+        { transform: `translate(${x}px, ${y}px)` }
+      ], {
+        duration: SETTLE_MS,
+        easing: "cubic-bezier(.34,1.56,.64,1)",
+        fill: "forwards"
+      });
+    }
+
+    requestAnimationFrame(floatStep);
+
+    // Keep docked position correct on resize
+    window.addEventListener("resize", () => {
+      if (!docked) return;
+      const { x, y } = dockXY();
+      img.style.transform = `translate(${x}px, ${y}px)`;
+    });
+  });
 })();
 </script>
+
   
 
   
