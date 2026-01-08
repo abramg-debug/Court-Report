@@ -206,5 +206,62 @@ tick();
 setInterval(tick,1000);
 setInterval(fetchLive,60000);
 </script>
+
+  <style>
+  #bouncer{
+    position:fixed;
+    left:20px; top:20px;
+    width:120px; height:auto;
+    z-index:9999;
+    pointer-events:none; /* doesn't block clicks */
+    opacity:0.95;
+    filter: drop-shadow(0 10px 18px rgba(0,0,0,.45));
+  }
+</style>
+
+<img id="bouncer" src="logo.png" alt="bouncer" hidden />
+
+<script>
+(() => {
+  const img = document.getElementById("bouncer");
+  if(!img) return;
+
+  // Put a real image in your repo named "logo.png"
+  img.hidden = false;
+
+  let x = 30, y = 30;
+  let vx = 2.4, vy = 2.0; // speed
+  let last = performance.now();
+
+  function step(t){
+    const dt = Math.min(32, t - last); // clamp
+    last = t;
+
+    const w = img.offsetWidth || 120;
+    const h = img.offsetHeight || 60;
+
+    const maxX = window.innerWidth - w;
+    const maxY = window.innerHeight - h;
+
+    x += vx * dt;
+    y += vy * dt;
+
+    if (x <= 0) { x = 0; vx *= -1; }
+    if (y <= 0) { y = 0; vy *= -1; }
+    if (x >= maxX) { x = maxX; vx *= -1; }
+    if (y >= maxY) { y = maxY; vy *= -1; }
+
+    img.style.transform = `translate(${x}px, ${y}px)`;
+
+    requestAnimationFrame(step);
+  }
+
+  requestAnimationFrame(step);
+
+  // Optional: stop after 12 seconds
+  setTimeout(() => { img.remove(); }, 12000);
+})();
+</script>
+
 </body>
 </html>
