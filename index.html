@@ -215,11 +215,7 @@ function initBouncer(){
   const SETTLE_MS = 420;
   const EASE = t => 1 - Math.pow(1 - t, 3);
 
-  // On-page debug readout (remove later)
-  const dbg = document.createElement("div");
-  dbg.style.cssText = "position:fixed;left:12px;bottom:12px;z-index:10000;font:12px ui-monospace,Menlo,monospace;background:rgba(0,0,0,.55);color:#fff;padding:8px 10px;border-radius:10px;pointer-events:none";
-  dbg.textContent = "bouncer: init…";
-  document.body.appendChild(dbg);
+  
 
   const startAnim = () => {
     const rect = img.getBoundingClientRect();
@@ -233,7 +229,7 @@ function initBouncer(){
       y: MARGIN_Y
     });
 
-    dbg.textContent = `bouncer: loaded w=${Math.round(w)} startY=${startY}`;
+   
 
     const start = performance.now();
     let docked = false;
@@ -254,7 +250,7 @@ function initBouncer(){
         requestAnimationFrame(step);
       }else{
         docked = true;
-        dbg.textContent = `bouncer: docked @ ${Math.round(dx)},${Math.round(dy)}`;
+        
 
         img.animate([
           { transform:`translate(${dx-OVERSHOOT}px,${dy-OVERSHOOT}px)` },
@@ -281,8 +277,8 @@ function initBouncer(){
   }else{
     img.addEventListener("load", startAnim, { once:true });
     img.addEventListener("error", () => {
-      dbg.textContent = "bouncer: ERROR loading logo.png";
-      console.warn("Bouncer image failed to load. Check logo.png path/case.");
+    
+     
     }, { once:true });
   }
 }
