@@ -232,11 +232,11 @@ setInterval(fetchLive,60000);
   img.hidden = false;
 
   let x = 30, y = 30;
-  let vx = 2.4, vy = 2.0; // speed
+  let vx = .35, vy = .25; // speed
   let last = performance.now();
 
   function step(t){
-    const dt = Math.min(32, t - last); // clamp
+    const dt = Math.min(16, t - last); // clamp
     last = t;
 
     const w = img.offsetWidth || 120;
@@ -260,12 +260,12 @@ setInterval(fetchLive,60000);
 
   requestAnimationFrame(step);
 
-  // Optional: stop after 12 seconds
-  setTimeout(() => { img.remove(); }, 12000);
+  // Optional: stop after 6 seconds
+  setTimeout(() => { img.remove(); }, 6000);
 })();
 </script>
   
-// end image bouncer code ------------------------
+
   
 </body>
 </html>
