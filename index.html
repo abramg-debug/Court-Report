@@ -112,7 +112,7 @@ Live data via AirLabs • Updates every 60 seconds
 </div>
 </div>
 
-<!-- BOUNCER IMAGE -->
+<!-- BOUNCER IMAGE (logo.png must exist in repo root) -->
 <img id="bouncer" src="logo.png" alt="logo">
 
 <script>
@@ -154,7 +154,7 @@ function scheduledArrival(){
 async function fetchLive(){
   try{
     const r = await fetch(
-      `${$("proxy").value}/flight?flight=${$("flight").value}&dep_iata=${$("dep_iata").value}&arr_iata=${$("arr_iata").value}`
+      `${$("proxy").value}/flight?flight=${encodeURIComponent($("flight").value)}&dep_iata=${encodeURIComponent($("dep_iata").value)}&arr_iata=${encodeURIComponent($("arr_iata").value)}`
     );
     const j = await r.json();
     if(j.ok && j.flight){
@@ -172,6 +172,7 @@ async function fetchLive(){
 function tick(){
   const now = new Date();
   let target = scheduledArrival();
+
   if(liveArrival){
     const d = new Date(liveArrival);
     if(!isNaN(d)) target = d;
@@ -194,56 +195,86 @@ function tick(){
   $("last_live").textContent = lastLive;
 }
 
-/* ===================== BOUNCER LOGIC ===================== */
+/* ===================== BOUNCER LOGIC (FLOAT → DOCK + TINY BOUNCE) ===================== */
 function initBouncer(){
   const img = $("bouncer");
   if(!img) return;
 
-  const DURATION_MS = 12000;
-  const MARGIN_X = 16;
-  const MARGIN_Y = 14;
-  const START_Y_PCT = 0.22;
-  const OVERSHOOT = 10;
-  const SETTLE_MS = 420;
+  // Ensure visible
+  img.hidden = false;
+  img.style.display = "block";
+
+  const DURATION_MS = 12000;   // float time across screen
+  const MARGIN_X = 16;         // right margin
+  const MARGIN_Y = 14;         // top margin
+  const START_Y_PCT = 0.22;    // start height
+  const OVERSHOOT = 10;        // px overshoot for bounce
+  const SETTLE_MS = 420;       // settle speed
   const EASE = t => 1 - Math.pow(1 - t, 3);
 
-  const startX = -img.offsetWidth - 20;
-  const startY = window.innerHeight * START_Y_PCT;
+  const startAnim = () => {
+    // Use real rendered size (or fallback)
+    const w = img.getBoundingClientRect().width || 120;
 
-  const dockXY = () => ({
-    x: window.innerWidth - img.offsetWidth - MARGIN_X,
-    y: MARGIN_Y
-  });
+    const startX = -w - 20; // off-screen left
+    const startY = window.innerHeight * START_Y_PCT;
 
-  const start = performance.now();
-  let docked = false;
+    const dockXY = () => ({
+      x: window.innerWidth - w - MARGIN_X,
+      y: MARGIN_Y
+    });
 
-  function step(now){
-    if(docked) return;
-    const t = Math.min(1, (now - start) / DURATION_MS);
-    const e = EASE(t);
+    const start = performance.now();
+    let docked = false;
 
-    const {x:dx, y:dy} = dockXY();
-    const x = startX + (dx - startX) * e;
-    const y = startY + (dy - startY) * e;
+    function step(now){
+      if(docked) return;
 
-    img.style.transform = `translate(${x}px, ${y}px)`;
+      const t = Math.min(1, (now - start) / DURATION_MS);
+      const e = EASE(t);
 
-    if(t < 1){
-      requestAnimationFrame(step);
-    }else{
-      docked = true;
-      img.animate([
-        { transform:`translate(${dx-OVERSHOOT}px,${dy-OVERSHOOT}px)` },
-        { transform:`translate(${dx}px,${dy}px)` }
-      ],{
-        duration:SETTLE_MS,
-        easing:"cubic-bezier(.34,1.56,.64,1)",
-        fill:"forwards"
-      });
+      const {x:dx, y:dy} = dockXY();
+      const x = startX + (dx - startX) * e;
+      const y = startY + (dy - startY) * e;
+
+      img.style.transform = `translate(${x}px, ${y}px)`;
+
+      if(t < 1){
+        requestAnimationFrame(step);
+      }else{
+        docked = true;
+
+        // Overshoot slightly then settle into the corner
+        img.animate([
+          { transform:`translate(${dx-OVERSHOOT}px,${dy-OVERSHOOT}px)` },
+          { transform:`translate(${dx}px,${dy}px)` }
+        ],{
+          duration:SETTLE_MS,
+          easing:"cubic-bezier(.34,1.56,.64,1)",
+          fill:"forwards"
+        });
+      }
     }
+
+    requestAnimationFrame(step);
+
+    // If window resizes after docking, keep it pinned top-right
+    window.addEventListener("resize", () => {
+      if(!docked) return;
+      const {x, y} = dockXY();
+      img.style.transform = `translate(${x}px, ${y}px)`;
+    });
+  };
+
+  // Wait until image is loaded so size is correct
+  if(img.complete && img.naturalWidth){
+    startAnim();
+  }else{
+    img.addEventListener("load", startAnim, { once:true });
+    img.addEventListener("error", () => {
+      console.warn("Bouncer image failed to load. Check that logo.png exists in repo root.");
+    }, { once:true });
   }
-  requestAnimationFrame(step);
 }
 
 /* ===================== INIT ===================== */
