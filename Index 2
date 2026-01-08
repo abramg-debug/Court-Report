@@ -1,1 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Court Report — Countdown to Arrival</title>
 
+<style>
+:root{
+  --bg:#0b1220; --card:#121a2b; --text:#e8eefc; --muted:#9fb0d8;
+  --accent:#3b82f6; --ok:#17c964; --warn:#f5a524; --err:#f31260;
+  --border:rgba(255,255,255,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+.wrap{max-width:820px;margin:28px auto;padding:16px}
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:18px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+}
+h1{margin:0;font-size:22px}
+h2{margin:4px 0 12px;font-size:14px;color:var(--muted);font-weight:600}
+label{font-size:12px;color:var(--muted)}
+input,button{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.04);
+  color:var(--text);
+}
+button{cursor:pointer;font-weight:600;background:rgba(59,130,246,.2)}
+button:hover{background:rgba(59,130,246,.3)}
+.grid{display:grid;gap:12px}
+@media(min-width:760px){.grid{grid-template-columns:1fr 1fr}}
+.big{
+  font-size:44px;
+  font-weight:900;
+  margin:16px 0 6px;
+}
+.status{color:var(--muted)}
+.badge{
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  font-size:12px;
+  font-weight:700;
+}
+.ok{color:var(--ok)}
+.warn{color:var(--warn)}
+.err{color:var(--err)}
+.kv{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.kv b{color:var(--text)}
+.footer{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+<div class="card">
+
+<h1>The Court Report</h1>
+<h2>Countdown to Arrival</h2>
+
+<span id="badge" class="badge ok">Scheduled</span>
+
+<div class="grid" style="margin-top:12px">
+  <div>
+    <label>Flight</label>
+    <input id="flight" value="UA1768">
+  </div>
+  <div>
+    <label>Route</label>
+    <input id="route" value="SFO → BUR">
+  </div>
+  <div>
+    <label>Departure IATA</label>
+    <input id="dep_iata" value="SFO">
+  </div>
+  <div>
+    <label>Arrival IATA</label>
+    <input id="arr_iata" value="BUR">
+  </div>
+  <div>
+    <label>Scheduled Arrival (local)</label>
+    <input id="arr_time" type="time" value="12:08">
+  </div>
+  <div>
+    <label>Date</label>
+    <input id="date" type="date" value="2026-01-09">
+  </div>
+  <div style="grid-column:1/-1">
+    <label>Cloudflare Worker URL</label>
+    <input id="proxy" value="https://court-report-flight-proxy.abram-g.workers.dev">
+  </div>
+</div>
+
+<div class="footer">
+  <button onclick="save()">Save / Apply</button>
+</div>
+
+<div class="big" id="countdown">—</div>
+<p class="status" id="status">—</p>
+
+<div class="kv"><span>Arrival source</span><b id="source">Scheduled</b></div>
+<div class="kv"><span>Arrival time</span><b id="arr_display">—</b></div>
+<div class="kv"><span>Last live update</span><b id="last_live">—</b></div>
+
+<p class="mono" style="margin-top:10px">
+Live data via AirLabs • Updates every 60 seconds
+</p>
+
+</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let liveArrival = null;
+let liveSource = "Scheduled";
+let lastLive = "—";
+
+function save(){
+  localStorage.setItem("court-report", JSON.stringify({
+    flight: $("flight").value,
+    route: $("route").value,
+    dep: $("dep_iata").value,
+    arr: $("arr_iata").value,
+    date: $("date").value,
+    time: $("arr_time").value,
+    proxy: $("proxy").value
+  }));
+  fetchLive();
+}
+
+function load(){
+  const d = JSON.parse(localStorage.getItem("court-report") || "{}");
+  if(d.flight) $("flight").value = d.flight;
+  if(d.route) $("route").value = d.route;
+  if(d.dep) $("dep_iata").value = d.dep;
+  if(d.arr) $("arr_iata").value = d.arr;
+  if(d.date) $("date").value = d.date;
+  if(d.time) $("arr_time").value = d.time;
+  if(d.proxy) $("proxy").value = d.proxy;
+}
+
+function scheduledArrival(){
+  return new Date(`${$("date").value}T${$("arr_time").value}:00`);
+}
+
+async function fetchLive(){
+  const url = `${$("proxy").value}/flight?flight=${$("flight").value}&dep_iata=${$("dep_iata").value}&arr_iata=${$("arr_iata").value}`;
+  try{
+    const r = await fetch(url);
+    const j = await r.json();
+    if(j.ok && j.flight){
+      const f = j.flight;
+      liveArrival =
+        f.arr_actual || f.arr_estimated || f.arr_scheduled ||
+        f.arrival?.actual || f.arrival?.estimated || f.arrival?.scheduled ||
+        null;
+      liveSource = liveArrival ? "Live" : "Scheduled";
+      lastLive = new Date().toLocaleTimeString();
+    }
+  }catch(e){}
+}
+
+function tick(){
+  const now = new Date();
+  let target = scheduledArrival();
+
+  if(liveArrival){
+    const d = new Date(liveArrival);
+    if(!isNaN(d)) target = d;
+  }
+
+  const diff = target - now;
+  if(diff <= 0){
+    $("countdown").textContent = "ARRIVED";
+    $("badge").className = "badge err";
+    $("badge").textContent = "Arrived";
+  }else{
+    const h = Math.floor(diff/3600000);
+    const m = Math.floor(diff/60000)%60;
+    const s = Math.floor(diff/1000)%60;
+    $("countdown").textContent = `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  }
+
+  $("source").textContent = liveSource;
+  $("arr_display").textContent = target.toLocaleString();
+  $("last_live").textContent = lastLive;
+}
+
+load();
+fetchLive();
+tick();
+setInterval(tick,1000);
+setInterval(fetchLive,60000);
+</script>
+</body>
+</html>
